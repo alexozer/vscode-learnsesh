@@ -2,6 +2,56 @@ import * as vscode from "vscode";
 
 import { posix } from "path";
 
+async function createSessionFolder(folder: vscode.Uri): Promise<vscode.Uri> {
+    const now = new Date(Date.now());
+    const year = String(now.getFullYear());
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+
+    let hoursVal = now.getHours() % 12;
+    if (hoursVal === 0) {
+        hoursVal = 12;
+    }
+    const hours = String(hoursVal).padStart(2, '0');
+
+    const pm = now.getHours() >= 12 ? "pm" : "am";
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+
+    const monthDirName = `${year}-${month}`;
+    const minutesDirName = `${year}-${month}-${day}-${hours}:${minutes}${pm}`;
+
+    const minutesDirUri = folder.with({
+        path: posix.join(folder.path, monthDirName, minutesDirName),
+    });
+    await vscode.workspace.fs.createDirectory(minutesDirUri);
+    return minutesDirUri;
+}
+
+async function openNotesFiles(folder: vscode.Uri): Promise<void> {
+    const fileNames = ["dump.md", "meta.md", "questions.md"];
+    // Construct URIs
+    const fileURIs = fileNames.map((fname) =>
+        folder.with({ path: posix.join(folder.path, fname) })
+    );
+
+    const folderContents = await vscode.workspace.fs.readDirectory(folder);
+    const existingFileNames = folderContents.map((entry) => entry[0]);
+
+    // Write empty files if they don't exist
+    for (let fileIdx = 0; fileIdx < fileNames.length; fileIdx++) {
+        if (!(fileNames[fileIdx] in existingFileNames)) {
+            await vscode.workspace.fs.writeFile(fileURIs[fileIdx], Buffer.from("", "utf-8"));
+        }
+    }
+
+    // Open URIs in order
+    for (const uri of fileURIs) {
+        await vscode.window.showTextDocument(uri);
+        // Idk how else to make everything open in new tabs
+        await vscode.commands.executeCommand("workbench.action.pinEditor");
+    }
+}
+
 async function newSession(): Promise<void> {
     // We need to have a workspace and folder open
     if (vscode.workspace.workspaceFolders === undefined) {
@@ -30,22 +80,8 @@ async function newSession(): Promise<void> {
     await vscode.workspace.saveAll();
     await vscode.commands.executeCommand("workbench.action.closeAllEditors");
 
-    const fileNames = ["dump.md", "meta.md", "questions.md"];
-    const folderURI = vscode.workspace.workspaceFolders[0].uri;
-    // Construct URIs
-    const fileURIs = fileNames.map((fname) =>
-        folderURI.with({ path: posix.join(folderURI.path, fname) })
-    );
-    // Write empty files to URIs in parallel
-    await Promise.all(
-        fileURIs.map((uri) => vscode.workspace.fs.writeFile(uri, Buffer.from("", "utf-8")))
-    );
-    // Open URIs in order
-    for (const uri of fileURIs) {
-        await vscode.window.showTextDocument(uri);
-        // Idk how else to make everything open in new tabs
-        await vscode.commands.executeCommand("workbench.action.pinEditor");
-    }
+    const dirUri = await createSessionFolder(vscode.workspace.workspaceFolders[0].uri);
+    await openNotesFiles(dirUri);
 }
 
 export function activate(context: vscode.ExtensionContext) {
