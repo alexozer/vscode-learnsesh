@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 
 import { posix } from "path";
 
-async function createSessionFolder(folder: vscode.Uri): Promise<vscode.Uri> {
+async function createSessionFolder(folder: vscode.Uri, sessionName: string): Promise<vscode.Uri> {
     const now = new Date(Date.now());
     const year = String(now.getFullYear());
     const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -17,8 +17,8 @@ async function createSessionFolder(folder: vscode.Uri): Promise<vscode.Uri> {
     const pm = now.getHours() >= 12 ? "pm" : "am";
     const minutes = String(now.getMinutes()).padStart(2, "0");
 
-    const monthDirName = `${year}-${month}`;
-    const minutesDirName = `${year}-${month}-${day}-${hours}:${minutes}${pm}`;
+    const monthDirName = `${year}_${month}`;
+    const minutesDirName = `${year}_${month}_${day}-${hours}:${minutes}${pm}-${sessionName}`;
 
     const minutesDirUri = folder.with({
         path: posix.join(folder.path, monthDirName, minutesDirName),
@@ -70,8 +70,8 @@ async function newSession(): Promise<void> {
         title: "LearnSesh: New Session",
         prompt: "Enter New Session Name",
     };
-    const input = await vscode.window.showInputBox(opts);
-    if (input === undefined) {
+    const sessionName = await vscode.window.showInputBox(opts);
+    if (sessionName === undefined) {
         // Cancel creating new session
         return;
     }
@@ -80,7 +80,7 @@ async function newSession(): Promise<void> {
     await vscode.workspace.saveAll();
     await vscode.commands.executeCommand("workbench.action.closeAllEditors");
 
-    const dirUri = await createSessionFolder(vscode.workspace.workspaceFolders[0].uri);
+    const dirUri = await createSessionFolder(vscode.workspace.workspaceFolders[0].uri, sessionName);
     await openNotesFiles(dirUri);
 }
 
