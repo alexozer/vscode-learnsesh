@@ -24,9 +24,10 @@ async function createSessionFolder(
     const day = String(date.getDate()).padStart(2, "0");
     const hours = String(date.getHours()).padStart(2, "0");
     const minutes = String(date.getMinutes()).padStart(2, "0");
+    const seconds = String(date.getSeconds()).padStart(2, "0");
 
     const monthDirName = `${year}_${month}`;
-    const minutesDirName = `${year}${month}${day}_${hours}${minutes}_${sessionName}`;
+    const minutesDirName = `${year}${month}${day}_${hours}${minutes}${seconds}_${sessionName}`;
 
     const minutesDirUri = folder.with({
         path: posix.join(folder.path, monthDirName, minutesDirName),
@@ -66,6 +67,9 @@ async function openNotesFiles(folder: vscode.Uri, date: Date): Promise<void> {
             editBuilder.insert(new vscode.Position(0, 0), prettyDateStr);
         });
     }
+
+    // Focus the first editor
+    await vscode.window.showTextDocument(fileURIs[0]);
 }
 
 async function newSession(): Promise<void> {
