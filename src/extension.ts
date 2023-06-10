@@ -2,23 +2,30 @@ import * as vscode from "vscode";
 
 import { posix } from "path";
 
-async function createSessionFolder(folder: vscode.Uri, sessionName: string): Promise<vscode.Uri> {
-    const now = new Date(Date.now());
-    const year = String(now.getFullYear());
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-
-    let hoursVal = now.getHours() % 12;
+function getTimeStr(date: Date): string {
+    let hoursVal = date.getHours() % 12;
     if (hoursVal === 0) {
         hoursVal = 12;
     }
-    const hours = String(hoursVal).padStart(2, '0');
+    const hours = String(hoursVal).padStart(2, "0");
+    const pm = date.getHours() >= 12 ? "pm" : "am";
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const timeStr = `${hours}:${minutes}${pm}`;
+    return timeStr;
+}
 
-    const pm = now.getHours() >= 12 ? "pm" : "am";
-    const minutes = String(now.getMinutes()).padStart(2, "0");
+async function createSessionFolder(
+    folder: vscode.Uri,
+    sessionName: string,
+    date: Date
+): Promise<vscode.Uri> {
+    const year = String(date.getFullYear());
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const time = getTimeStr(date);
 
     const monthDirName = `${year}_${month}`;
-    const minutesDirName = `${year}_${month}_${day}-${hours}:${minutes}${pm}-${sessionName}`;
+    const minutesDirName = `${year}${month}${day}-${time}-${sessionName}`;
 
     const minutesDirUri = folder.with({
         path: posix.join(folder.path, monthDirName, minutesDirName),
@@ -27,7 +34,7 @@ async function createSessionFolder(folder: vscode.Uri, sessionName: string): Pro
     return minutesDirUri;
 }
 
-async function openNotesFiles(folder: vscode.Uri): Promise<void> {
+async function openNotesFiles(folder: vscode.Uri, date: Date): Promise<void> {
     const fileNames = ["dump.md", "meta.md", "questions.md"];
     // Construct URIs
     const fileURIs = fileNames.map((fname) =>
@@ -44,11 +51,19 @@ async function openNotesFiles(folder: vscode.Uri): Promise<void> {
         }
     }
 
+    // Time string to insert as first line in documents
+    const prettyDateStr = `${date.toString()}\n`;
+
     // Open URIs in order
     for (const uri of fileURIs) {
         await vscode.window.showTextDocument(uri);
         // Idk how else to make everything open in new tabs
-        await vscode.commands.executeCommand("workbench.action.pinEditor");
+        // await vscode.commands.executeCommand("workbench.action.pinEditor");
+
+        // Edit the file so that opening subsequent files opens in new adjacent tabs
+        await vscode.window.activeTextEditor?.edit((editBuilder) => {
+            editBuilder.insert(new vscode.Position(0, 0), prettyDateStr);
+        });
     }
 }
 
@@ -80,8 +95,14 @@ async function newSession(): Promise<void> {
     await vscode.workspace.saveAll();
     await vscode.commands.executeCommand("workbench.action.closeAllEditors");
 
-    const dirUri = await createSessionFolder(vscode.workspace.workspaceFolders[0].uri, sessionName);
-    await openNotesFiles(dirUri);
+    const now = new Date(Date.now());
+
+    const dirUri = await createSessionFolder(
+        vscode.workspace.workspaceFolders[0].uri,
+        sessionName,
+        now
+    );
+    await openNotesFiles(dirUri, now);
 }
 
 export function activate(context: vscode.ExtensionContext) {
