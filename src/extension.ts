@@ -52,7 +52,7 @@ async function openNotesFiles(folder: vscode.Uri, date: Date): Promise<void> {
     }
 
     // Time string to insert as first line in documents
-    const prettyDateStr = `${date.toString()}\n`;
+    const prettyDateStr = `${date.toDateString()} - ${getTimeStr(date)}\n`;
 
     // Open URIs in order
     for (const uri of fileURIs) {
@@ -94,6 +94,7 @@ async function newSession(): Promise<void> {
     // Save and close other editors
     await vscode.workspace.saveAll();
     await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+    await vscode.commands.executeCommand("workbench.files.action.collapseExplorerFolders");
 
     const now = new Date(Date.now());
 
