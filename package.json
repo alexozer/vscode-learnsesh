@@ -2,13 +2,17 @@
   "name": "learnsesh",
   "displayName": "LearnSesh",
   "description": "Manage learning sessions, consisting of dump, metacognition, and questions files",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.78.0"
   },
   "categories": [
     "Other"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alexozer/learnsesh.git"
+  },
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
